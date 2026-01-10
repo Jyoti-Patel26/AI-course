@@ -7,9 +7,16 @@ person={
         "father":{
             "name":"aaa"
         },
-        "mother":{
-
-        }
+        "mother":{}
     },
-    "qualification":
+    "qualification":["SSC","HSC","BCA"],
+    "hobbies":{},
+    "isAlive":True
 }
+print(person)
+print(person["isAlive"])
+
+person["isAlive"]=False
+print(person["isAlive"])
+
+print(type(person))
