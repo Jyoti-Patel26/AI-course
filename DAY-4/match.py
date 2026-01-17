@@ -11,4 +11,5 @@ match day:
         print("tuesday")
 
     case _:
+                # thi is default case
         print("default")
