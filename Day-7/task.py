@@ -1,9 +1,9 @@
-import pandas as pd
-
+import pandas as pd 
 data = pd.read_csv("train.csv")
 
- #print(data.head())
- print(data.tail())
+print(data.head(10))
 
-# print(data.info())
-#print(data.describe())
+#print(data.tail(10))
+#print(data.info(10))
+
+#print(data.describe(10))
