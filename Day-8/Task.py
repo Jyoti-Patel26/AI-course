@@ -1,7 +1,11 @@
 import pandas as pd
 
-df = pd.read_csv("Coffee Shop Sales.csv")
+j = pd.read_csv("Coffee Shop Sales.csv")
 
-df["Total_Price"] = df["transaction_qty"] * df["unit_price"]
+j["Total_Price"] = j["transaction_qty"] * j["unit_price"]
+print("Total Price:", total_price)
 
-print(df.head())
+print(j.head())
+total_sales = j["Total_Price"].sum()
+
+print("Total Sales:", total_sales)
