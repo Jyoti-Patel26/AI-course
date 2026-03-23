@@ -1,11 +1,39 @@
-import tensorflow as tf
-import numpy as np
-import cv2
-import matplotlib.pyplot as plt
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+#!/usr/bin/env python3
+"""
+Emotion Detection System with Real-Time Webcam Support
+"""
+
+import sys
 import os
+import time
+import numpy as np
+import matplotlib.pyplot as plt
+from PIL import Image
+
+# Try importing required libraries with error handling
+try:
+    import cv2
+    print("✓ OpenCV imported successfully")
+except ImportError as e:
+    print(f"✗ OpenCV import error: {e}")
+    print("Installing OpenCV...")
+    os.system("pip3 install opencv-python opencv-python-headless")
+    import cv2
+
+try:
+    import tensorflow as tf
+    from tensorflow.keras.preprocessing.image import ImageDataGenerator
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+    print("✓ TensorFlow imported successfully")
+except ImportError as e:
+    print(f"✗ TensorFlow import error: {e}")
+    print("Installing TensorFlow...")
+    os.system("pip3 install tensorflow")
+    import tensorflow as tf
+    from tensorflow.keras.preprocessing.image import ImageDataGenerator
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
 
 # ===============================
 # DATASET PATH
@@ -14,9 +42,68 @@ import os
 train_path = "dataset/train"
 test_path = "dataset/test"
 
+# Check if dataset exists
+if not os.path.exists(train_path):
+    print(f"\n⚠️  Warning: Dataset not found at {train_path}")
+    print("Please create the following folder structure:")
+    print("dataset/")
+    print("  train/")
+    print("    happy/")
+    print("    sad/")
+    print("    angry/")
+    print("  test/")
+    print("    happy/")
+    print("    sad/")
+    print("    angry/")
+    print("\nOr download FER2013 dataset from Kaggle")
+    
+    # Create dummy data for testing
+    create_dummy_data = input("\nCreate dummy data for testing? (y/n): ")
+    if create_dummy_data.lower() == 'y':
+        create_dummy_dataset()
+    else:
+        sys.exit(1)
+
+# ===============================
+# CREATE DUMMY DATASET FOR TESTING
+# ===============================
+
+def create_dummy_dataset():
+    """Create dummy dataset for testing the code structure"""
+    print("\nCreating dummy dataset for testing...")
+    
+    emotions = ['happy', 'sad', 'angry']
+    
+    for split in ['train', 'test']:
+        for emotion in emotions:
+            os.makedirs(f"dataset/{split}/{emotion}", exist_ok=True)
+            
+            # Create 5 dummy images for each category
+            for i in range(5):
+                # Create a random colored image
+                dummy_img = np.random.randint(0, 255, (128, 128, 3), dtype=np.uint8)
+                
+                # Add text to image based on emotion
+                if emotion == 'happy':
+                    dummy_img[60:68, 40:88] = [0, 255, 0]  # Green smile
+                elif emotion == 'sad':
+                    dummy_img[60:68, 40:88] = [255, 0, 0]  # Blue frown
+                else:  # angry
+                    dummy_img[60:68, 40:88] = [0, 0, 255]  # Red angry
+                
+                # Save image
+                img_path = f"dataset/{split}/{emotion}/dummy_{i}.jpg"
+                cv2.imwrite(img_path, dummy_img)
+    
+    print("✓ Dummy dataset created successfully!")
+
 # ===============================
 # DATA PREPROCESSING
 # ===============================
+
+print("\n" + "="*50)
+print("Loading dataset...")
+print("="*50)
 
 datagen = ImageDataGenerator(
     rescale=1./255,
@@ -40,9 +127,16 @@ test_data = ImageDataGenerator(rescale=1./255).flow_from_directory(
     class_mode='categorical'
 )
 
+print(f"\n✓ Found {train_data.num_classes} emotion classes:")
+print(f"  {list(train_data.class_indices.keys())}")
+
 # ===============================
-# BUILD CNN MODEL (CORRECTED SYNTAX)
+# BUILD CNN MODEL
 # ===============================
+
+print("\n" + "="*50)
+print("Building CNN Model...")
+print("="*50)
 
 model = Sequential()
 
@@ -84,9 +178,10 @@ print(model.summary())
 # TRAIN MODEL
 # ===============================
 
-# Check if model already exists to avoid retraining
 if not os.path.exists("emotion_model.h5"):
-    print("Training new model...")
+    print("\n" + "="*50)
+    print("Training Model...")
+    print("="*50)
     
     history = model.fit(
         train_data,
@@ -95,14 +190,11 @@ if not os.path.exists("emotion_model.h5"):
         verbose=1
     )
     
-    # ===============================
-    # SAVE MODEL
-    # ===============================
-    
+    # Save model
     model.save("emotion_model.h5")
-    print("Model saved as emotion_model.h5")
+    print("\n✓ Model saved as emotion_model.h5")
     
-    # Plot training history
+    # Plot training results
     plt.figure(figsize=(12, 4))
     
     plt.subplot(1, 2, 1)
@@ -122,22 +214,23 @@ if not os.path.exists("emotion_model.h5"):
     plt.legend()
     
     plt.tight_layout()
+    plt.savefig('training_history.png')
     plt.show()
     
 else:
-    print("Loading existing model...")
+    print("\n✓ Loading existing model...")
     model = tf.keras.models.load_model("emotion_model.h5")
-    print("Model loaded successfully!")
+    print("✓ Model loaded successfully!")
 
 # ===============================
-# REAL-TIME WEBCAM DETECTION (NEW FEATURE)
+# REAL-TIME WEBCAM DETECTION
 # ===============================
 
 def real_time_detection():
     """Real-time emotion detection using webcam"""
     
     print("\n" + "="*50)
-    print("REAL-TIME EMOTION DETECTION")
+    print("🎥 REAL-TIME EMOTION DETECTION")
     print("="*50)
     print("Controls:")
     print("  Press 'q' - Quit")
@@ -149,7 +242,8 @@ def real_time_detection():
     cap = cv2.VideoCapture(0)
     
     if not cap.isOpened():
-        print("Error: Could not open webcam")
+        print("❌ Error: Could not open webcam")
+        print("Try using image upload mode instead")
         return
     
     # Get class labels
@@ -158,57 +252,58 @@ def real_time_detection():
     # Load face detector
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
     
-    # Variables for FPS
-    import time
+    # Variables
     fps_start_time = time.time()
     fps_counter = 0
     fps = 0
     paused = False
     
-    print("Webcam started! Press 'q' to quit.\n")
+    print("✓ Webcam started! Show your face...")
+    print("Press 'q' to quit\n")
     
     while True:
         ret, frame = cap.read()
         if not ret:
+            print("❌ Failed to capture frame")
             break
         
         if not paused:
-            # Convert to grayscale for face detection
+            # Convert to grayscale
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             
             # Detect faces
-            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
+            faces = face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(60, 60))
             
             for (x, y, w, h) in faces:
                 # Extract face
                 face_roi = frame[y:y+h, x:x+w]
                 
-                # Preprocess for model
+                # Preprocess
                 face_resized = cv2.resize(face_roi, (128, 128))
                 face_normalized = face_resized / 255.0
                 face_input = np.reshape(face_normalized, (1, 128, 128, 3))
                 
-                # Predict emotion
+                # Predict
                 prediction = model.predict(face_input, verbose=0)
                 predicted_class = labels[np.argmax(prediction)]
                 confidence = np.max(prediction) * 100
                 
-                # Color based on emotion
+                # Color coding
                 if predicted_class == 'happy':
-                    color = (0, 255, 0)  # Green
+                    color = (0, 255, 0)
                 elif predicted_class == 'sad':
-                    color = (255, 0, 0)  # Blue
+                    color = (255, 0, 0)
                 elif predicted_class == 'angry':
-                    color = (0, 0, 255)  # Red
+                    color = (0, 0, 255)
                 else:
-                    color = (255, 255, 255)  # White
+                    color = (255, 255, 255)
                 
-                # Draw bounding box
+                # Draw rectangle
                 cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
                 
-                # Display emotion label
-                label_text = f"{predicted_class}: {confidence:.1f}%"
-                cv2.putText(frame, label_text, (x, y-10), 
+                # Display label
+                label = f"{predicted_class}: {confidence:.1f}%"
+                cv2.putText(frame, label, (x, y-10), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
                 
                 # Confidence bar
@@ -216,69 +311,77 @@ def real_time_detection():
                 cv2.rectangle(frame, (x, y+h+5), (x+bar_width, y+h+15), color, -1)
                 cv2.rectangle(frame, (x, y+h+5), (x+w, y+h+15), (128, 128, 128), 1)
         
-        # Calculate FPS
+        # FPS counter
         fps_counter += 1
         if time.time() - fps_start_time >= 1.0:
             fps = fps_counter
             fps_counter = 0
             fps_start_time = time.time()
         
-        # Display status
-        status_text = "PAUSED" if paused else "LIVE"
+        # Display info
+        status = "PAUSED" if paused else "LIVE"
         status_color = (0, 0, 255) if paused else (0, 255, 0)
         cv2.putText(frame, f"FPS: {fps}", (10, 30), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-        cv2.putText(frame, f"Status: {status_text}", (10, 60), 
+        cv2.putText(frame, f"Status: {status}", (10, 60), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, status_color, 2)
-        
-        # Instructions
         cv2.putText(frame, "q:quit | s:screenshot | p:pause", 
-                   (10, frame.shape[0] - 10), 
+                   (10, frame.shape[0]-10), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
         
         # Show frame
-        cv2.imshow('Emotion Detection', frame)
+        cv2.imshow('Emotion Detection System', frame)
         
-        # Handle key presses
+        # Handle keys
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
             break
         elif key == ord('s'):
             timestamp = time.strftime("%Y%m%d_%H%M%S")
             cv2.imwrite(f"screenshot_{timestamp}.jpg", frame)
-            print(f"Screenshot saved!")
+            print(f"📸 Screenshot saved!")
         elif key == ord('p'):
             paused = not paused
     
     cap.release()
     cv2.destroyAllWindows()
-    print("\nWebcam closed!")
+    print("\n✓ Webcam closed!")
 
 # ===============================
 # IMAGE UPLOAD PREDICTION
 # ===============================
 
-def image_prediction():
-    """Predict emotion from uploaded image"""
+def image_upload_prediction():
+    """Upload and predict emotion from image"""
     
-    from tkinter import Tk
-    from tkinter.filedialog import askopenfilename
+    from tkinter import Tk, filedialog
     
-    Tk().withdraw()
+    print("\n" + "="*50)
+    print("📷 IMAGE UPLOAD MODE")
+    print("="*50)
     
-    img_path = askopenfilename(
-        title="Select Image",
+    # Create root window and hide it
+    root = Tk()
+    root.withdraw()
+    
+    # Open file dialog
+    img_path = filedialog.askopenfilename(
+        title="Select an Image",
         filetypes=[("Image Files", "*.jpg *.jpeg *.png")]
     )
     
     if not img_path:
-        print("No image selected")
+        print("❌ No image selected")
         return
     
-    print(f"Selected: {img_path}")
+    print(f"✓ Selected: {os.path.basename(img_path)}")
     
     # Load and preprocess
     img = cv2.imread(img_path)
+    if img is None:
+        print("❌ Could not load image")
+        return
+    
     img_resized = cv2.resize(img, (128, 128))
     img_normalized = img_resized / 255.0
     img_input = np.reshape(img_normalized, (1, 128, 128, 3))
@@ -289,22 +392,22 @@ def image_prediction():
     predicted_class = labels[np.argmax(prediction)]
     confidence = np.max(prediction) * 100
     
-    print(f"\nPredicted Emotion: {predicted_class}")
-    print(f"Confidence: {confidence:.2f}%\n")
+    print(f"\n🎯 Predicted Emotion: {predicted_class.upper()}")
+    print(f"📊 Confidence: {confidence:.2f}%\n")
     
-    # Show probabilities
-    print("All Probabilities:")
+    print("📈 All Probabilities:")
     for i, label in enumerate(labels):
-        print(f"  {label}: {prediction[0][i]*100:.2f}%")
+        bar = "█" * int(prediction[0][i] * 30)
+        print(f"   {label:10s}: {prediction[0][i]*100:5.2f}% {bar}")
     
-    # Display image
-    display_img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
+    # Display results
+    display_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     
     plt.figure(figsize=(12, 5))
     
     plt.subplot(1, 2, 1)
     plt.imshow(display_img)
-    plt.title(f"Prediction: {predicted_class}\nConfidence: {confidence:.1f}%")
+    plt.title(f"Prediction: {predicted_class}\nConfidence: {confidence:.1f}%", fontsize=14)
     plt.axis("off")
     
     plt.subplot(1, 2, 2)
@@ -326,28 +429,37 @@ def image_prediction():
 # ===============================
 
 def main():
+    """Main menu"""
+    
     print("\n" + "="*50)
-    print("EMOTION DETECTION SYSTEM")
+    print("🎭 EMOTION DETECTION SYSTEM")
     print("="*50)
-    print("1. Upload Image for Detection")
-    print("2. Real-Time Webcam Detection")
-    print("3. Exit")
+    print("1. 📷 Upload Image for Detection")
+    print("2. 🎥 Real-Time Webcam Detection")
+    print("3. ❌ Exit")
     print("="*50)
     
     while True:
-        choice = input("\nSelect option (1-3): ")
-        
-        if choice == '1':
-            image_prediction()
+        try:
+            choice = input("\n👉 Select option (1-3): ").strip()
+            
+            if choice == '1':
+                image_upload_prediction()
+                break
+            elif choice == '2':
+                real_time_detection()
+                break
+            elif choice == '3':
+                print("\n👋 Goodbye!")
+                break
+            else:
+                print("❌ Invalid choice! Please select 1, 2, or 3")
+        except KeyboardInterrupt:
+            print("\n\n👋 Goodbye!")
             break
-        elif choice == '2':
-            real_time_detection()
-            break
-        elif choice == '3':
-            print("Goodbye!")
-            break
-        else:
-            print("Invalid choice! Please select 1, 2, or 3")
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            continue
 
 if __name__ == "__main__":
     main()
